@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    /* サイト全体の基本フォントを指定 */
+    font-family: 'M PLUS Rounded 1c', sans-serif;
+  }
+}
+
+/* 
+  JavaScriptからのUI表示制御用スタイル
+  Tailwind CSSのクラスで上書きされるため、!importantは不要です。
+*/
+#game-area { display: none; } /* 最初は非表示 */
+
+canvas { cursor: pointer; }
