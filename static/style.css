@@ -14,5 +14,14 @@
   Tailwind CSSのクラスで上書きされるため、!importantは不要です。
 */
 #game-area { display: none; } /* 最初は非表示 */
+#game-controls { display: none; } /* 最初は非表示 */
 
-canvas { cursor: pointer; }
+/* canvasの基本スタイル */
+#puzzle-canvas {
+  cursor: pointer;
+  /* 画面幅の90%か、600pxの小さい方を採用 */
+  width: 90vw;
+  height: 90vw;
+  max-width: 600px;
+  max-height: 600px;
+}

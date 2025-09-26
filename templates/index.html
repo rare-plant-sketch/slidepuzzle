@@ -49,7 +49,16 @@
                     </div>
                 </div>
                 <div id="game-area" class="mt-8">
-                    <canvas id="puzzle-canvas" width="600" height="600" class="rounded-lg shadow-lg"></canvas>
+                    <div id="game-controls" class="flex justify-between items-center mb-4 px-2">
+                        <div id="timer" class="text-xl font-bold text-yellow-500 bg-slate-900/50 px-4 py-2 rounded-md">
+                            残り時間: 00:30
+                        </div>
+                        <button onclick="returnToMenu()" class="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                            <span class="material-icons">exit_to_app</span>
+                            <span>メニューへ</span>
+                        </button>
+                    </div>
+                    <canvas id="puzzle-canvas" class="rounded-lg shadow-lg"></canvas>
                 </div>
             </main>
             

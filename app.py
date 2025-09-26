@@ -76,6 +76,10 @@ def move_tile():
     empty_tile_id = grid_size * grid_size - 1
     empty_index = positions.index(empty_tile_id)
 
+    # 既に解決済みの場合は移動させない
+    if positions == session['correct_positions']:
+        return jsonify({'positions': positions, 'is_solved': True, 'moved': False})
+
     # 隣接しているかチェック
     clicked_row, clicked_col = index // grid_size, index % grid_size
     empty_row, empty_col = empty_index // grid_size, empty_index % grid_size
