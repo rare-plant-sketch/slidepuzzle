@@ -8,7 +8,7 @@ const headerDiv = document.getElementById('game-header');
 const gameControls = document.getElementById('game-controls');
 
 const SHOW_COMPLETE_DURATION = 5; // 完成図の表示時間（秒）
-const TIME_LIMIT = 30; // 制限時間（秒）
+const TIME_LIMIT = 60; // 制限時間（秒）
 
 let TILE_SIZE;
 let GRID_SIZE;
