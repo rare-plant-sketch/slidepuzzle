@@ -21,7 +21,7 @@
   cursor: pointer;
   /* 画面幅の90%か、600pxの小さい方を採用 */
   width: 90vw;
-  height: 90vw;
   max-width: 600px;
-  max-height: 600px;
+  aspect-ratio: 1 / 1;
+  display: block; /*　正方形に保つ　*/
 }

@@ -43,12 +43,17 @@ def start_game():
     data = request.get_json()
     grid_size = int(data.get('grid_size', DEFAULT_GRID_SIZE))
 
-    # 画像をランダムに選択
-    image_files = [f for f in os.listdir(IMAGE_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-    if image_files:
-        image_path = os.path.join(IMAGE_DIR, random.choice(image_files))
+    # グリッドサイズが変更されたか、画像がまだ選択されていない場合に新しい画像を選択
+    if 'image_path' not in session or session.get('grid_size') != grid_size:
+        image_files = [f for f in os.listdir(IMAGE_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        if image_files:
+            image_path = os.path.join(IMAGE_DIR, random.choice(image_files))
+        else:
+            image_path = os.path.join('static', 'swiss.jpg') # デフォルト画像
+        session['image_path'] = image_path.replace('\\', '/') # Windowsのパス区切り文字対策
     else:
-        image_path = os.path.join('static', 'swiss.jpg') # デフォルト画像
+        # セッションに保存されている画像を再利用
+        image_path = session['image_path']
 
     # ゲーム状態をセッションに保存
     session['grid_size'] = grid_size
@@ -59,7 +64,7 @@ def start_game():
     return jsonify({
         'grid_size': session['grid_size'],
         'positions': session['positions'],
-        'image_path': session['image_path'],
+        'image_path': image_path,
     })
 
 @app.route('/api/move', methods=['POST'])

@@ -21,6 +21,11 @@ let overlayMessage = ''; // キャンバスに表示するメッセージ
 let showMenuButton = false; // メニューに戻るボタンを表示するか
 let menuButtonRect = {};
 
+// スマホ表示を判定する関数
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // 画像が読み込まれたら描画を開始
 puzzleImage.onload = () => {
     // 1. 完成図を5秒間表示
@@ -79,12 +84,14 @@ function showCompleteImageAndStart() {
 
         // メッセージを描画
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 40px "M PLUS Rounded 1c", sans-serif';
+        const messageFontSize = isMobile() ? 20 : 40;
+        ctx.font = `bold ${messageFontSize}px "M PLUS Rounded 1c", sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText('完成図を覚えてね', canvas.width / 2, canvas.height / 2 - 20);
 
         ctx.fillStyle = 'yellow';
-        ctx.font = '30px "M PLUS Rounded 1c", sans-serif';
+        const countdownFontSize = isMobile() ? 15 : 30;
+        ctx.font = `${countdownFontSize}px "M PLUS Rounded 1c", sans-serif`;
         ctx.fillText(`あと ${countdown} 秒`, canvas.width / 2, canvas.height / 2 + 30);
 
         countdown--;
@@ -179,13 +186,14 @@ function drawBoard() {
         const destX = (i % GRID_SIZE) * TILE_SIZE;
         const destY = Math.floor(i / GRID_SIZE) * TILE_SIZE;
 
-        // 元画像の切り出し元の位置
-        const sourceX = (pieceId % GRID_SIZE) * TILE_SIZE;
-        const sourceY = Math.floor(pieceId / GRID_SIZE) * TILE_SIZE;
+        // 元画像の切り出し元の位置を、画像の実際のサイズに基づいて計算
+        const sourceTileSize = puzzleImage.width / GRID_SIZE;
+        const sourceX = (pieceId % GRID_SIZE) * sourceTileSize;
+        const sourceY = Math.floor(pieceId / GRID_SIZE) * sourceTileSize;
 
         ctx.drawImage(
             puzzleImage,
-            sourceX, sourceY, TILE_SIZE, TILE_SIZE, // 切り出し元
+            sourceX, sourceY, sourceTileSize, sourceTileSize, // 切り出し元
             destX, destY, TILE_SIZE, TILE_SIZE      // 描画先
         );
     }
@@ -197,7 +205,8 @@ function drawBoard() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'yellow';
-        ctx.font = 'bold 50px "M PLUS Rounded 1c", sans-serif';
+        const overlayFontSize = isMobile() ? 25 : 50;
+        ctx.font = `bold ${overlayFontSize}px "M PLUS Rounded 1c", sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText(overlayMessage, canvas.width / 2, canvas.height / 2);
     }
@@ -208,7 +217,8 @@ function drawBoard() {
         ctx.fillRect(menuButtonRect.x, menuButtonRect.y, menuButtonRect.width, menuButtonRect.height);
         
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 28px "M PLUS Rounded 1c", sans-serif';
+        const buttonFontSize = isMobile() ? 14 : 28;
+        ctx.font = `bold ${buttonFontSize}px "M PLUS Rounded 1c", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle'; // 文字の垂直位置を中央に
         ctx.fillText('メニューに戻る', canvas.width / 2, menuButtonRect.y + menuButtonRect.height / 2);
@@ -217,11 +227,13 @@ function drawBoard() {
 }
 
 // ピース移動をアニメーションさせる関数
-function animateMove(fromIndex, toIndex) {
+function animateMove(fromIndex, toIndex, onComplete) {
     isGameActive = false; // アニメーション中は操作を無効化
 
-    const pieceId = positions[fromIndex];
-    const emptyTileId = positions[toIndex];
+    // アニメーション開始前の盤面状態を保持
+    const tempPositions = [...positions];
+    const pieceId = tempPositions[fromIndex];
+    // const emptyTileId = tempPositions[toIndex]; // この変数は未使用でした
 
     const startX = (fromIndex % GRID_SIZE) * TILE_SIZE;
     const startY = Math.floor(fromIndex / GRID_SIZE) * TILE_SIZE;
@@ -241,31 +253,31 @@ function animateMove(fromIndex, toIndex) {
 
         // 盤面を再描画
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const sourceTileSize = puzzleImage.width / GRID_SIZE;
+
         // 動かすピースと空白以外のピースを描画
         for (let i = 0; i < positions.length; i++) {
-            if (i !== fromIndex && i !== toIndex) {
-                const pId = positions[i];
+            if (i !== fromIndex) { // 動かすピース以外を描画
+                const pId = tempPositions[i];
                 const destX = (i % GRID_SIZE) * TILE_SIZE;
                 const destY = Math.floor(i / GRID_SIZE) * TILE_SIZE;
-                const sourceX = (pId % GRID_SIZE) * TILE_SIZE;
-                const sourceY = Math.floor(pId / GRID_SIZE) * TILE_SIZE;
-                ctx.drawImage(puzzleImage, sourceX, sourceY, TILE_SIZE, TILE_SIZE, destX, destY, TILE_SIZE, TILE_SIZE);
+                const sourceX = (pId % GRID_SIZE) * sourceTileSize;
+                const sourceY = Math.floor(pId / GRID_SIZE) * sourceTileSize;
+                ctx.drawImage(puzzleImage, sourceX, sourceY, sourceTileSize, sourceTileSize, destX, destY, TILE_SIZE, TILE_SIZE);
             }
         }
 
         // 動かすピースを計算した位置に描画
-        const sourceX = (pieceId % GRID_SIZE) * TILE_SIZE;
-        const sourceY = Math.floor(pieceId / GRID_SIZE) * TILE_SIZE;
-        ctx.drawImage(puzzleImage, sourceX, sourceY, TILE_SIZE, TILE_SIZE, currentX, currentY, TILE_SIZE, TILE_SIZE);
+        const sourceX = (pieceId % GRID_SIZE) * sourceTileSize;
+        const sourceY = Math.floor(pieceId / GRID_SIZE) * sourceTileSize;
+        ctx.drawImage(puzzleImage, sourceX, sourceY, sourceTileSize, sourceTileSize, currentX, currentY, TILE_SIZE, TILE_SIZE);
 
         // アニメーションが完了していなければ次のフレームを要求
         if (progress < 1) {
             requestAnimationFrame(animationStep);
         } else {
-            // アニメーション完了後
-            // サーバーからのレスポンスを待ってから最終的な盤面を描画するため、
-            // ここでは操作可能に戻すだけ。
-            isGameActive = true;
+            // アニメーション完了後にコールバック関数を実行
+            if (onComplete) onComplete();
         }
     }
 
@@ -325,22 +337,25 @@ canvas.addEventListener('click', async (event) => {
                       (clickedCol === emptyCol && Math.abs(clickedRow - emptyRow) === 1);
 
     if (isMovable) {
-        // アニメーションを開始
-        animateMove(index, emptyIndex);
-
-        // バックエンドに移動をリクエスト（アニメーションと並行して実行）
+        // バックエンドに移動をリクエスト
         const response = await fetch('/api/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ index: index }),
         });
         const data = await response.json();
+        
+        // アニメーションを開始し、完了後に関数を実行
+        animateMove(index, emptyIndex, () => {
+            // アニメーション完了後にサーバーからの最新の状態で盤面を更新
+            positions = data.positions;
 
-        positions = data.positions; // サーバーからの最新の状態で更新
-        drawBoard(); // アニメーション完了後に最終的な盤面を描画
-
-        if (data.is_solved) {
-            handleGameWin(); // ゲームクリア処理を呼び出す
-        }
+            if (data.is_solved) {
+                handleGameWin(); // ゲームクリア処理を呼び出す
+            } else {
+                drawBoard(); // 最終的な盤面を描画
+                isGameActive = true; // 操作可能に戻す
+            }
+        });
     }
 });
