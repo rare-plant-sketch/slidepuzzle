@@ -43,17 +43,29 @@ def start_game():
     data = request.get_json()
     grid_size = int(data.get('grid_size', DEFAULT_GRID_SIZE))
 
-    # グリッドサイズが変更されたか、画像がまだ選択されていない場合に新しい画像を選択
-    if 'image_path' not in session or session.get('grid_size') != grid_size:
-        image_files = [f for f in os.listdir(IMAGE_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-        if image_files:
-            image_path = os.path.join(IMAGE_DIR, random.choice(image_files))
-        else:
-            image_path = os.path.join('static', 'swiss.jpg') # デフォルト画像
-        session['image_path'] = image_path.replace('\\', '/') # Windowsのパス区切り文字対策
+    # 常に新しい画像を選択し、前回と違う画像を選ぶ
+    image_files = [f for f in os.listdir(IMAGE_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    
+    if not image_files:
+        # 画像がない場合はデフォルト画像を使用
+        image_path = os.path.join('static', 'swiss.jpg')
     else:
-        # セッションに保存されている画像を再利用
-        image_path = session['image_path']
+        previous_image_filename = None
+        if 'image_path' in session:
+            # セッションから前回の画像のファイル名を取得
+            previous_image_filename = os.path.basename(session['image_path'])
+
+        # 前回と異なる画像を選択するための候補リストを作成
+        possible_images = [f for f in image_files if f != previous_image_filename]
+        if not possible_images:
+            # 候補がない場合（画像が1枚しかないなど）は、全画像を対象にする
+            possible_images = image_files
+            
+        new_image_filename = random.choice(possible_images)
+        image_path = os.path.join(IMAGE_DIR, new_image_filename)
+
+    # 今回選択した画像をセッションに保存（次回比較用）
+    session['image_path'] = image_path.replace('\\', '/') # Windowsのパス区切り文字対策
 
     # ゲーム状態をセッションに保存
     session['grid_size'] = grid_size

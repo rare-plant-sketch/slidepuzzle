@@ -6,6 +6,8 @@
   body {
     /* サイト全体の基本フォントを指定 */
     font-family: 'M PLUS Rounded 1c', sans-serif;
+    overflow:hidden;
+    touch-action: none;
   }
 }
 
