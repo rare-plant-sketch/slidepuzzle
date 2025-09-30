@@ -21,6 +21,10 @@ let overlayMessage = ''; // キャンバスに表示するメッセージ
 let showMenuButton = false; // メニューに戻るボタンを表示するか
 let menuButtonRect = {};
 
+// Touch event variables
+let touchStartX = 0;
+let touchStartY = 0;
+
 // スマホ表示を判定する関数
 function isMobile() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -299,35 +303,11 @@ function returnToMenu() {
     location.reload();
 }
 
-// クリックイベントの処理
-canvas.addEventListener('click', async (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    // 1. ゲーム終了後のボタンクリックをチェック
-    if (showMenuButton) {
-        // 「メニューに戻る」ボタンのクリック判定
-        if (x >= menuButtonRect.x && x <= menuButtonRect.x + menuButtonRect.width &&
-            y >= menuButtonRect.y && y <= menuButtonRect.y + menuButtonRect.height) {
-            returnToMenu();
-            return;
-        }
-    }
-
-    // 2. ゲーム中でなければ、以降のピース移動処理はしない
-    if (!isGameActive) return;
-
-    // 3. ゲーム中のピース移動処理
-    const col = Math.floor(x / TILE_SIZE);
-    const row = Math.floor(y / TILE_SIZE);
-    const index = row * GRID_SIZE + col;
-    
-    // --- 移動ロジック ---
+// ピース移動のメインロジック
+async function triggerMove(index) {
     const emptyTileId = GRID_SIZE * GRID_SIZE - 1;
     const emptyIndex = positions.indexOf(emptyTileId);
 
-    // クリックしたピースが空白ピースに隣接しているかクライアント側でチェック
     const clickedRow = Math.floor(index / GRID_SIZE);
     const clickedCol = index % GRID_SIZE;
     const emptyRow = Math.floor(emptyIndex / GRID_SIZE);
@@ -336,8 +316,8 @@ canvas.addEventListener('click', async (event) => {
     const isMovable = (clickedRow === emptyRow && Math.abs(clickedCol - emptyCol) === 1) ||
                       (clickedCol === emptyCol && Math.abs(clickedRow - emptyRow) === 1);
 
-    if (isMovable) {
-        // バックエンドに移動をリクエスト
+    if (isMovable && isGameActive) {
+        isGameActive = false; // 他の操作を一時的に無効化
         const response = await fetch('/api/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -345,17 +325,94 @@ canvas.addEventListener('click', async (event) => {
         });
         const data = await response.json();
         
-        // アニメーションを開始し、完了後に関数を実行
         animateMove(index, emptyIndex, () => {
-            // アニメーション完了後にサーバーからの最新の状態で盤面を更新
             positions = data.positions;
-
             if (data.is_solved) {
-                handleGameWin(); // ゲームクリア処理を呼び出す
+                handleGameWin();
             } else {
-                drawBoard(); // 最終的な盤面を描画
-                isGameActive = true; // 操作可能に戻す
+                drawBoard();
+                isGameActive = true;
             }
         });
     }
+}
+
+// --- イベントリスナー ---
+
+// クリックイベントの処理
+canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    if (showMenuButton) {
+        if (x >= menuButtonRect.x && x <= menuButtonRect.x + menuButtonRect.width &&
+            y >= menuButtonRect.y && y <= menuButtonRect.y + menuButtonRect.height) {
+            returnToMenu();
+            return;
+        }
+    }
+
+    if (!isGameActive) return;
+
+    const col = Math.floor(x / TILE_SIZE);
+    const row = Math.floor(y / TILE_SIZE);
+    const index = row * GRID_SIZE + col;
+    
+    triggerMove(index);
 });
+
+// タッチ（スワイプ）イベントの処理
+canvas.addEventListener('touchstart', (event) => {
+    if (!isGameActive) return;
+    event.preventDefault(); // 画面スクロールを防止
+    const rect = canvas.getBoundingClientRect();
+    touchStartX = event.touches[0].clientX - rect.left;
+    touchStartY = event.touches[0].clientY - rect.top;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (event) => {
+    if (!isGameActive) return;
+    const rect = canvas.getBoundingClientRect();
+    const touchEndX = event.changedTouches[0].clientX - rect.left;
+    const touchEndY = event.changedTouches[0].clientY - rect.top;
+    handleSwipe(touchEndX, touchEndY);
+});
+
+function handleSwipe(endX, endY) {
+    const deltaX = endX - touchStartX;
+    const deltaY = endY - touchStartY;
+    const swipeThreshold = 30; // スワイプと判定する最小距離
+
+    let targetIndex = -1;
+    const emptyTileId = GRID_SIZE * GRID_SIZE - 1;
+    const emptyIndex = positions.indexOf(emptyTileId);
+    const emptyRow = Math.floor(emptyIndex / GRID_SIZE);
+    const emptyCol = emptyIndex % GRID_SIZE;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) { // 横方向のスワイプ
+        if (Math.abs(deltaX) > swipeThreshold) {
+            if (deltaX > 0) { // 右スワイプ
+                // 空白マスの左のピースを動かす
+                if (emptyCol > 0) targetIndex = emptyIndex - 1;
+            } else { // 左スワイプ
+                // 空白マスの右のピースを動かす
+                if (emptyCol < GRID_SIZE - 1) targetIndex = emptyIndex + 1;
+            }
+        }
+    } else { // 縦方向のスワイプ
+        if (Math.abs(deltaY) > swipeThreshold) {
+            if (deltaY > 0) { // 下スワイプ
+                // 空白マスの上のピースを動かす
+                if (emptyRow > 0) targetIndex = emptyIndex - GRID_SIZE;
+            } else { // 上スワイプ
+                // 空白マスの下のピースを動かす
+                if (emptyRow < GRID_SIZE - 1) targetIndex = emptyIndex + GRID_SIZE;
+            }
+        }
+    }
+
+    if (targetIndex !== -1) {
+        triggerMove(targetIndex);
+    }
+}
